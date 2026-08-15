@@ -1,0 +1,12 @@
+import type {Diff,EditableItem,Palette,SceneExport,Session,Transform} from './types'
+
+export const cloneTransform=(t:Transform):Transform=>({position:[...t.position],rotation:[...t.rotation],scale:[...t.scale]})
+export const unityToThree=(t:Transform):Transform=>({position:[t.position[0],t.position[1],-t.position[2]],rotation:[-t.rotation[0],-t.rotation[1],t.rotation[2],t.rotation[3]],scale:[...t.scale]})
+export const threeToUnity=unityToThree
+const round=(n:number)=>Math.abs(n)<1e-12?0:Number(n.toFixed(10))
+export const normalizeTransform=(t:Transform):Transform=>({position:t.position.map(round) as Transform['position'],rotation:t.rotation.map(round) as Transform['rotation'],scale:t.scale.map(round) as Transform['scale']})
+export const sameTransform=(a:Transform,b:Transform)=>JSON.stringify(normalizeTransform(a))===JSON.stringify(normalizeTransform(b))
+export function createSession(scene:SceneExport,palette:Palette):Session{return{scene,palette,diffCreatedAt:new Date().toISOString(),editable:scene.entries.filter(e=>e.editable&&e.prefabPath).map(e=>({id:e.id,name:e.name,prefabPath:e.prefabPath!,transform:cloneTransform(e.transform),priorTransform:cloneTransform(e.transform),isAdded:false,deleted:false}))}}
+export function buildDiff(s:Session,createdAt=s.diffCreatedAt):Diff{return{schemaVersion:'1.0.0',kind:'holocity.placement-diff',sceneName:s.scene.sceneName,baseHash:s.scene.baseHash,createdAt,modified:s.editable.filter(e=>!e.isAdded&&!e.deleted&&e.priorTransform&&!sameTransform(e.transform,e.priorTransform)).map(e=>({id:e.id,transform:normalizeTransform(e.transform),priorTransform:normalizeTransform(e.priorTransform!)})),added:s.editable.filter(e=>e.isAdded&&!e.deleted).map(e=>({tempId:e.id,prefabPath:e.prefabPath,transform:normalizeTransform(e.transform)})),deleted:s.editable.filter(e=>!e.isAdded&&e.deleted&&e.priorTransform).map(e=>({id:e.id,priorTransform:normalizeTransform(e.priorTransform!)}))}}
+export function addItem(s:Session,item:Palette['items'][number],n:number,position:[number,number,number]=[0,0,0]):EditableItem{return{id:`add-${String(n).padStart(3,'0')}`,name:item.displayName,prefabPath:item.prefabPath,transform:{position,rotation:item.defaultRotation??[0,0,0,1],scale:item.defaultScale??[1,1,1]},isAdded:true,deleted:false}}
+export const exportJson=(name:string,value:unknown)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)+'\n'],{type:'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}

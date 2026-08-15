@@ -1,0 +1,1231 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "holocity.scene-export",
+  "sceneName": "Synthetic HoloCity",
+  "unityScenePath": "Assets/Scenes/Synthetic.unity",
+  "exportedAt": "2026-08-02T12:00:00.000Z",
+  "exportMode": "whole",
+  "baseHash": "28fdae3cf54d75383e5988426a09f5b05d690ec8ace77b3e8dfac58d3351ef2c",
+  "entries": [
+    {
+      "id": "GlobalObjectId_V1-edit-0",
+      "name": "Asymmetric L",
+      "prefabPath": "Assets/HoloCity/BlockA.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          -10,
+          0,
+          -8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/l-shape.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-1",
+      "name": "Town prop 2",
+      "prefabPath": "Assets/HoloCity/BlockB.prefab",
+      "kitFamily": "Market",
+      "editable": true,
+      "transform": {
+        "position": [
+          -6,
+          0,
+          -8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-2",
+      "name": "Town prop 3",
+      "prefabPath": "Assets/HoloCity/Tower.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          -2,
+          0,
+          -8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-3",
+      "name": "Town prop 4",
+      "prefabPath": "Assets/HoloCity/LShape.prefab",
+      "kitFamily": "Test",
+      "editable": true,
+      "transform": {
+        "position": [
+          2,
+          0,
+          -8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-4",
+      "name": "Town prop 5",
+      "prefabPath": "Assets/HoloCity/BlockA.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          6,
+          0,
+          -8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-5",
+      "name": "Town prop 6",
+      "prefabPath": "Assets/HoloCity/BlockB.prefab",
+      "kitFamily": "Market",
+      "editable": true,
+      "transform": {
+        "position": [
+          10,
+          0,
+          -8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-6",
+      "name": "Town prop 7",
+      "prefabPath": "Assets/HoloCity/Tower.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          -10,
+          0,
+          -4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-7",
+      "name": "Town prop 8",
+      "prefabPath": "Assets/HoloCity/LShape.prefab",
+      "kitFamily": "Test",
+      "editable": true,
+      "transform": {
+        "position": [
+          -6,
+          0,
+          -4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-8",
+      "name": "Town prop 9",
+      "prefabPath": "Assets/HoloCity/BlockA.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          -2,
+          0,
+          -4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-9",
+      "name": "Town prop 10",
+      "prefabPath": "Assets/HoloCity/BlockB.prefab",
+      "kitFamily": "Market",
+      "editable": true,
+      "transform": {
+        "position": [
+          2,
+          0,
+          -4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-10",
+      "name": "Town prop 11",
+      "prefabPath": "Assets/HoloCity/Tower.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          6,
+          0,
+          -4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-11",
+      "name": "Town prop 12",
+      "prefabPath": "Assets/HoloCity/LShape.prefab",
+      "kitFamily": "Test",
+      "editable": true,
+      "transform": {
+        "position": [
+          10,
+          0,
+          -4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-12",
+      "name": "Town prop 13",
+      "prefabPath": "Assets/HoloCity/BlockA.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          -10,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-13",
+      "name": "Town prop 14",
+      "prefabPath": "Assets/HoloCity/BlockB.prefab",
+      "kitFamily": "Market",
+      "editable": true,
+      "transform": {
+        "position": [
+          -6,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-14",
+      "name": "Town prop 15",
+      "prefabPath": "Assets/HoloCity/Tower.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          -2,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-15",
+      "name": "Town prop 16",
+      "prefabPath": "Assets/HoloCity/LShape.prefab",
+      "kitFamily": "Test",
+      "editable": true,
+      "transform": {
+        "position": [
+          2,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-16",
+      "name": "Town prop 17",
+      "prefabPath": "Assets/HoloCity/BlockA.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          6,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-17",
+      "name": "Town prop 18",
+      "prefabPath": "Assets/HoloCity/BlockB.prefab",
+      "kitFamily": "Market",
+      "editable": true,
+      "transform": {
+        "position": [
+          10,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-18",
+      "name": "Town prop 19",
+      "prefabPath": "Assets/HoloCity/Tower.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          -10,
+          0,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-19",
+      "name": "Town prop 20",
+      "prefabPath": "Assets/HoloCity/LShape.prefab",
+      "kitFamily": "Test",
+      "editable": true,
+      "transform": {
+        "position": [
+          -6,
+          0,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-20",
+      "name": "Town prop 21",
+      "prefabPath": "Assets/HoloCity/BlockA.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          -2,
+          0,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-21",
+      "name": "Town prop 22",
+      "prefabPath": "Assets/HoloCity/BlockB.prefab",
+      "kitFamily": "Market",
+      "editable": true,
+      "transform": {
+        "position": [
+          2,
+          0,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-22",
+      "name": "Town prop 23",
+      "prefabPath": "Assets/HoloCity/Tower.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          6,
+          0,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-23",
+      "name": "Town prop 24",
+      "prefabPath": "Assets/HoloCity/LShape.prefab",
+      "kitFamily": "Test",
+      "editable": true,
+      "transform": {
+        "position": [
+          10,
+          0,
+          4
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-24",
+      "name": "Town prop 25",
+      "prefabPath": "Assets/HoloCity/BlockA.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          -10,
+          0,
+          8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-25",
+      "name": "Town prop 26",
+      "prefabPath": "Assets/HoloCity/BlockB.prefab",
+      "kitFamily": "Market",
+      "editable": true,
+      "transform": {
+        "position": [
+          -6,
+          0,
+          8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-26",
+      "name": "Town prop 27",
+      "prefabPath": "Assets/HoloCity/Tower.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          -2,
+          0,
+          8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-27",
+      "name": "Town prop 28",
+      "prefabPath": "Assets/HoloCity/LShape.prefab",
+      "kitFamily": "Test",
+      "editable": true,
+      "transform": {
+        "position": [
+          2,
+          0,
+          8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-28",
+      "name": "Town prop 29",
+      "prefabPath": "Assets/HoloCity/BlockA.prefab",
+      "kitFamily": "Civic",
+      "editable": true,
+      "transform": {
+        "position": [
+          6,
+          0,
+          8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-edit-29",
+      "name": "Town prop 30",
+      "prefabPath": "Assets/HoloCity/BlockB.prefab",
+      "kitFamily": "Market",
+      "editable": true,
+      "transform": {
+        "position": [
+          10,
+          0,
+          8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-locked-0",
+      "name": "Terrain slab",
+      "editable": false,
+      "transform": {
+        "position": [
+          0,
+          -0.3,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "glb": "meshes/terrain.glb",
+      "boundsSize": [
+        52,
+        0.3,
+        44
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-locked-1",
+      "name": "Locked context 1",
+      "editable": false,
+      "transform": {
+        "position": [
+          -11,
+          0,
+          13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          2,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-locked-2",
+      "name": "Locked context 2",
+      "editable": false,
+      "transform": {
+        "position": [
+          -8,
+          0,
+          13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          2,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-locked-3",
+      "name": "Locked context 3",
+      "editable": false,
+      "transform": {
+        "position": [
+          -5,
+          0,
+          13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          2,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-locked-4",
+      "name": "Locked context 4",
+      "editable": false,
+      "transform": {
+        "position": [
+          -2,
+          0,
+          13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          2,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-locked-5",
+      "name": "Locked context 5",
+      "editable": false,
+      "transform": {
+        "position": [
+          1,
+          0,
+          13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          2,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-locked-6",
+      "name": "Locked context 6",
+      "editable": false,
+      "transform": {
+        "position": [
+          4,
+          0,
+          13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          2,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-locked-7",
+      "name": "Locked context 7",
+      "editable": false,
+      "transform": {
+        "position": [
+          7,
+          0,
+          13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          2,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-locked-8",
+      "name": "Locked context 8",
+      "editable": false,
+      "transform": {
+        "position": [
+          10,
+          0,
+          13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          2,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "id": "GlobalObjectId_V1-locked-9",
+      "name": "Locked context 9",
+      "editable": false,
+      "transform": {
+        "position": [
+          13,
+          0,
+          13
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          2,
+          1
+        ]
+      },
+      "glb": "meshes/block.glb",
+      "boundsSize": [
+        2,
+        2,
+        2
+      ]
+    }
+  ]
+}

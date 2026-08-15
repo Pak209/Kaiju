@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "holocity.scene-export.1-0-0",
+  "title": "HoloCity Scene Export",
+  "description": "One-way payload: Unity -> web editor. Transforms are UNITY-SPACE (left-handed, Y-up, meters; quaternion xyzw). The web editor converts for display only and must convert back losslessly on diff export.",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "sceneName", "unityScenePath", "exportedAt", "exportMode", "baseHash", "entries"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "kind": { "const": "holocity.scene-export" },
+    "sceneName": { "type": "string" },
+    "unityScenePath": { "type": "string" },
+    "exportedAt": { "type": "string", "format": "date-time" },
+    "exportMode": { "enum": ["district", "whole"] },
+    "districtName": { "type": "string" },
+    "baseHash": { "type": "string", "description": "sha256 over canonical JSON of entries[]; the diff must echo it" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "editable", "transform"],
+        "properties": {
+          "id": { "type": "string", "description": "Unity GlobalObjectId string. Opaque to the web editor; echo verbatim." },
+          "name": { "type": "string" },
+          "prefabPath": { "type": "string", "description": "Assets/... path. Absent for locked context that isn't a prefab instance (e.g. terrain chunk proxies)." },
+          "kitFamily": { "type": "string" },
+          "editable": { "type": "boolean", "description": "false = locked context: render, occlude, never selectable, never in a diff" },
+          "transform": {
+            "type": "object",
+            "required": ["position", "rotation", "scale"],
+            "properties": {
+              "position": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+              "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4, "description": "quaternion xyzw, Unity-space" },
+              "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+            }
+          },
+          "glb": { "type": "string", "description": "relative path to per-prefab GLB, shared by all instances of the same prefab" },
+          "boundsSize": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+        }
+      }
+    }
+  }
+}

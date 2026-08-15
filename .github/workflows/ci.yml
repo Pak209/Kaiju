@@ -1,0 +1,101 @@
+name: CI
+
+# Three agents work this repo in parallel and none of us can self-assess
+# renderer correctness by reading a diff. CI is the only reviewer that cannot
+# be talked out of a verdict, so it runs on everything.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    name: contract (schema + cross-side)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Regenerate fixtures
+        run: npm run fixtures
+      # A generator that is not deterministic makes every unrelated PR dirty
+      # the fixtures and turns `git diff` into noise. Catch it here rather
+      # than discovering it during a review.
+      - name: Fixtures are deterministic
+        run: |
+          if ! git diff --quiet -- fixtures/; then
+            echo "::error::fixtures/generate.mjs is not deterministic — regenerating changed committed files."
+            git diff --stat -- fixtures/
+            exit 1
+          fi
+      - run: node fixtures/validate.mjs
+      - name: Schema + cross-side contract
+        run: npm run contract
+
+  web:
+    name: web (typecheck, test, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run fixtures
+      - name: Typecheck
+        run: npx tsc -b
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  unity-sync:
+    name: unity sync (canonical vs project copy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # HolobotsUnity is a separate private repo and is not checked out here,
+      # so this reports SKIPPED and exits 0. It is kept in CI deliberately:
+      # the job's log is the record of whether drift was checked or merely
+      # not checked, and it goes live the moment the Unity repo is available
+      # to the runner. Locally it is real — `npm run sync:unity -- --check`.
+      - name: Drift check
+        run: node tools/sync-unity.mjs --check
+
+  guard:
+    name: guard (no bundles, no packs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # This repo is PUBLIC and export bundles bake geometry out of purchased
+      # asset packs. A committed bundle is a licensing incident, not a mess,
+      # so it fails the build rather than earning a review comment.
+      - name: No GLBs outside the synthetic fixture bundle
+        run: |
+          stray=$(git ls-files '*.glb' '*.gltf' | grep -v '^fixtures/bundle/meshes/' || true)
+          if [ -n "$stray" ]; then
+            echo "::error::geometry committed outside fixtures/bundle/meshes/ — bundles derive from purchased packs and this repo is public."
+            echo "$stray"
+            exit 1
+          fi
+      - name: No export bundle manifests
+        run: |
+          stray=$(git ls-files | grep -E '(^|/)(scene_export|palette)\.json$' | grep -v '^fixtures/' || true)
+          if [ -n "$stray" ]; then
+            echo "::error::a real export bundle looks committed outside fixtures/."
+            echo "$stray"
+            exit 1
+          fi

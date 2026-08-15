@@ -1,0 +1,29 @@
+# dependencies / build output
+node_modules/
+dist/
+preview/
+*.tsbuildinfo
+
+# tooling scratch
+.img2threejs/
+.DS_Store
+
+# ---------------------------------------------------------------------------
+# EXPORT BUNDLES ARE NEVER COMMITTED.
+#
+# A bundle is GLB geometry baked out of HoloCity prefabs, and those prefabs
+# derive from purchased asset packs. Committing a bundle to this PUBLIC repo
+# would redistribute store assets. That is a licence line, not a preference.
+#
+# The only geometry in this repo is fixtures/bundle/, which is synthetic
+# primitives emitted by fixtures/generate.mjs and owns nothing.
+# ---------------------------------------------------------------------------
+PlacerBundles/
+*/PlacerBundles/
+bundles/
+*.glb
+!fixtures/bundle/meshes/*.glb
+
+# golden-render artifacts produced by a run (the committed goldens live in
+# fixtures/goldens/render/ and are force-added)
+tests/render/out/

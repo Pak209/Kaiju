@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "holocity.palette.1-0-0",
+  "title": "HoloCity Placement Palette",
+  "description": "Catalog of placeable prefabs, exported by Unity alongside the scene. The web editor's add-from-library sidebar is built from this and ONLY this — a prefabPath not in the palette can never appear in a diff's added[].",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "items"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "kind": { "const": "holocity.palette" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["prefabPath", "displayName", "kitFamily", "glb"],
+        "properties": {
+          "prefabPath": { "type": "string" },
+          "displayName": { "type": "string" },
+          "kitFamily": { "type": "string" },
+          "glb": { "type": "string" },
+          "thumbnail": { "type": "string" },
+          "defaultScale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+          "defaultRotation": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4, "description": "kit prefabs carry axis-fix rotations on the ROOT; placement must COMPOSE with this default, never overwrite it" }
+        }
+      }
+    }
+  }
+}

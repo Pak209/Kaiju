@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "holocity.palette",
+  "items": [
+    {
+      "prefabPath": "Assets/HoloCity/BlockA.prefab",
+      "displayName": "Block A",
+      "kitFamily": "Civic",
+      "glb": "meshes/block.glb",
+      "defaultScale": [
+        1,
+        1,
+        1
+      ],
+      "defaultRotation": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "prefabPath": "Assets/HoloCity/BlockB.prefab",
+      "displayName": "Block B",
+      "kitFamily": "Market",
+      "glb": "meshes/block.glb",
+      "defaultScale": [
+        1,
+        1,
+        1
+      ],
+      "defaultRotation": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "prefabPath": "Assets/HoloCity/Tower.prefab",
+      "displayName": "Tower",
+      "kitFamily": "Civic",
+      "glb": "meshes/block.glb",
+      "defaultScale": [
+        1,
+        1,
+        1
+      ],
+      "defaultRotation": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "prefabPath": "Assets/HoloCity/LShape.prefab",
+      "displayName": "L Shape",
+      "kitFamily": "Test",
+      "glb": "meshes/l-shape.glb",
+      "defaultScale": [
+        1,
+        1,
+        1
+      ],
+      "defaultRotation": [
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ]
+}

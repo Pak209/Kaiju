@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "holocity.placement-diff.1-0-0",
+  "title": "HoloCity Placement Diff",
+  "description": "One-way payload: web editor -> Unity importer. The ONLY thing the web editor ever hands back. Transforms are UNITY-SPACE. priorTransform enables conflict detection and human review; the importer refuses entries whose current scene transform no longer matches priorTransform (scene changed underneath the session).",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "sceneName", "baseHash", "createdAt", "modified", "added", "deleted"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "kind": { "const": "holocity.placement-diff" },
+    "sceneName": { "type": "string" },
+    "baseHash": { "type": "string", "description": "must equal the scene_export baseHash this session loaded" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "modified": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "transform", "priorTransform"],
+        "properties": {
+          "id": { "type": "string" },
+          "transform": { "$ref": "#/$defs/transform" },
+          "priorTransform": { "$ref": "#/$defs/transform" }
+        }
+      }
+    },
+    "added": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tempId", "prefabPath", "transform"],
+        "properties": {
+          "tempId": { "type": "string", "pattern": "^add-[0-9]{3,}$" },
+          "prefabPath": { "type": "string", "description": "must exist in palette.json; importer instantiates the prefab, never raw meshes" },
+          "transform": { "$ref": "#/$defs/transform" }
+        }
+      }
+    },
+    "deleted": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "priorTransform"],
+        "properties": {
+          "id": { "type": "string" },
+          "priorTransform": { "$ref": "#/$defs/transform" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "transform": {
+      "type": "object",
+      "required": ["position", "rotation", "scale"],
+      "properties": {
+        "position": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
+        "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+      }
+    }
+  }
+}
