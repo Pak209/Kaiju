@@ -59,6 +59,29 @@ jobs:
       - name: Build
         run: npm run build
 
+  render-parity:
+    name: render parity (golden + known-bad)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx puppeteer browsers install chrome
+      - run: npm run fixtures
+      # Passing requires BOTH halves: the good render matches the committed
+      # golden AND the two known-bad modes (mirrored handedness, dropped
+      # rotations) FAIL to match it. A gate whose known-bad passes is blind,
+      # and the blindness itself fails the build.
+      - run: npm run render:gate
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: render-diffs
+          path: tests/render/out/
+
   unity-sync:
     name: unity sync (canonical vs project copy)
     runs-on: ubuntu-latest
