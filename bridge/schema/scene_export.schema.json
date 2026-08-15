@@ -1,27 +1,31 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "holocity.scene-export.1-0-0",
+  "$id": "holocity.scene-export.1-1-0",
   "title": "HoloCity Scene Export",
-  "description": "One-way payload: Unity -> web editor. Transforms are UNITY-SPACE (left-handed, Y-up, meters; quaternion xyzw). The web editor converts for display only and must convert back losslessly on diff export.",
+  "description": "One-way payload: Unity -> web editor. Transforms are UNITY-SPACE (left-handed, Y-up, metres; quaternion xyzw), world-space, with `scale` being lossyScale. The web editor converts for display only and must convert back losslessly on diff export.",
   "type": "object",
   "required": ["schemaVersion", "kind", "sceneName", "unityScenePath", "exportedAt", "exportMode", "baseHash", "entries"],
   "properties": {
-    "schemaVersion": { "const": "1.0.0" },
+    "schemaVersion": { "const": "1.1.0" },
     "kind": { "const": "holocity.scene-export" },
     "sceneName": { "type": "string" },
     "unityScenePath": { "type": "string" },
     "exportedAt": { "type": "string", "format": "date-time" },
     "exportMode": { "enum": ["district", "whole"] },
     "districtName": { "type": "string" },
-    "baseHash": { "type": "string", "description": "sha256 over canonical JSON of entries[]; the diff must echo it" },
+    "baseHash": { "type": "string", "description": "sha256 over canonical JSON of entries[]; the diff echoes it. Advisory on import — see placement_diff." },
     "entries": {
       "type": "array",
       "items": {
         "type": "object",
         "required": ["id", "name", "editable", "transform"],
         "properties": {
-          "id": { "type": "string", "description": "Unity GlobalObjectId string. Opaque to the web editor; echo verbatim." },
+          "id": { "type": "string", "description": "Unity GlobalObjectId string. Opaque to the web editor; echo verbatim. Zero for an object created and not yet saved — export after saving." },
           "name": { "type": "string" },
+          "parentId": {
+            "type": "string",
+            "description": "id of this entry's nearest ancestor that is also an entry. Absent means it hangs off the scene root, or off an ancestor that was not exported. Establishes the hierarchy the web editor shows and the baseline a reparent is diffed against."
+          },
           "prefabPath": { "type": "string", "description": "Assets/... path. Absent for locked context that isn't a prefab instance (e.g. terrain chunk proxies)." },
           "kitFamily": { "type": "string" },
           "editable": { "type": "boolean", "description": "false = locked context: render, occlude, never selectable, never in a diff" },
@@ -30,8 +34,20 @@
             "required": ["position", "rotation", "scale"],
             "properties": {
               "position": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
-              "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4, "description": "quaternion xyzw, Unity-space" },
-              "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+              "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4, "description": "quaternion xyzw, Unity-space, WORLD" },
+              "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "WORLD scale (lossyScale)" }
+            }
+          },
+          "state": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Live non-transform state at export. This is the baseline a diff's priorState is built from; without it the web editor would be guessing what it is changing away from.",
+            "properties": {
+              "active": { "type": "boolean" },
+              "layer": { "type": "string", "description": "layer NAME, never an index" },
+              "tag": { "type": "string" },
+              "staticFlags": { "type": "array", "items": { "type": "string" } },
+              "materialVariant": { "type": ["string", "null"], "description": "key of the currently applied palette variant, or null when the prefab's own materials are in place" }
             }
           },
           "glb": { "type": "string", "description": "relative path to per-prefab GLB, shared by all instances of the same prefab" },

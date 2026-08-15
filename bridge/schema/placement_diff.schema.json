@@ -1,15 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "holocity.placement-diff.1-0-0",
+  "$id": "holocity.placement-diff.1-1-0",
   "title": "HoloCity Placement Diff",
-  "description": "One-way payload: web editor -> Unity importer. The ONLY thing the web editor ever hands back. Transforms are UNITY-SPACE. priorTransform enables conflict detection and human review; the importer refuses entries whose current scene transform no longer matches priorTransform (scene changed underneath the session).",
+  "description": "One-way payload: web editor -> Unity importer. The ONLY thing the web editor ever hands back. Transforms are UNITY-SPACE. priorTransform and priorState enable conflict detection and human review; the importer refuses entries whose live scene value no longer matches the prior the session was built on.",
   "type": "object",
   "required": ["schemaVersion", "kind", "sceneName", "baseHash", "createdAt", "modified", "added", "deleted"],
   "properties": {
-    "schemaVersion": { "const": "1.0.0" },
+    "schemaVersion": { "const": "1.1.0" },
     "kind": { "const": "holocity.placement-diff" },
     "sceneName": { "type": "string" },
-    "baseHash": { "type": "string", "description": "must equal the scene_export baseHash this session loaded" },
+    "baseHash": {
+      "type": "string",
+      "description": "the scene_export baseHash this session loaded. A MISMATCH IS A WARNING, NOT A GATE — it hashes the whole scene, so it trips on any unrelated edit, and making it fatal meant a placement session died to someone adjusting a light. priorTransform/priorState do the real per-entry conflict work."
+    },
     "createdAt": { "type": "string", "format": "date-time" },
     "modified": {
       "type": "array",
@@ -19,7 +22,15 @@
         "properties": {
           "id": { "type": "string" },
           "transform": { "$ref": "#/$defs/transform" },
-          "priorTransform": { "$ref": "#/$defs/transform" }
+          "priorTransform": { "$ref": "#/$defs/transform" },
+          "state": {
+            "$ref": "#/$defs/state",
+            "description": "Non-transform changes. ONLY the keys present here are applied — an absent key means 'leave it alone', which is not the same as a key set to its default."
+          },
+          "priorState": {
+            "$ref": "#/$defs/state",
+            "description": "The value each key in `state` held at export. Every key in `state` MUST appear here; the importer refuses the entry if the live scene disagrees. A state change with no prior cannot be conflict-checked and is refused rather than trusted."
+          }
         }
       }
     },
@@ -31,12 +42,17 @@
         "properties": {
           "tempId": { "type": "string", "pattern": "^add-[0-9]{3,}$" },
           "prefabPath": { "type": "string", "description": "must exist in palette.json; importer instantiates the prefab, never raw meshes" },
-          "transform": { "$ref": "#/$defs/transform" }
+          "transform": {
+            "$ref": "#/$defs/transform",
+            "description": "ABSOLUTE, including the prefab's axis fix. The web editor seeds an added item with palette.defaultRotation and stores the total, so the importer ASSIGNS this rather than composing with prefab.transform.rotation — composing applied the axis fix twice on ~92% of adds."
+          },
+          "state": { "$ref": "#/$defs/state", "description": "No priorState: a new object has nothing to conflict with." }
         }
       }
     },
     "deleted": {
       "type": "array",
+      "description": "The importer DEACTIVATES AND REPARENTS to a _PlacerTrash root; it does not destroy. Deletes arrive in batches from a browser session where they were cheap to make, so the wrong one surfaces after a domain reload — exactly when Undo no longer helps.",
       "items": {
         "type": "object",
         "required": ["id", "priorTransform"],
@@ -54,7 +70,48 @@
       "properties": {
         "position": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
         "rotation": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
-        "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+        "scale": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "WORLD scale (Unity lossyScale). The importer divides by the parent's lossyScale to get localScale — assigning world scale to localScale multiplies by the parent again and compounds every round trip."
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "parentId": {
+          "type": ["string", "null"],
+          "description": "GlobalObjectId of the new parent, or null for the scene root. The importer refuses a parent that is not itself an entry in the session's scene_export, and refuses any reparent that would create a cycle."
+        },
+        "active": { "type": "boolean", "description": "GameObject.activeSelf." },
+        "layer": {
+          "type": "string",
+          "description": "Layer NAME, never an index. Indices are project-local and a stale index silently lands an object on the wrong layer; a name that does not exist in the project is refused."
+        },
+        "tag": { "type": "string", "description": "Tag name. Refused if not defined in the project." },
+        "staticFlags": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "ContributeGI",
+              "OccluderStatic",
+              "OccludeeStatic",
+              "BatchingStatic",
+              "NavigationStatic",
+              "OffMeshLinkGeneration",
+              "ReflectionProbeStatic"
+            ]
+          },
+          "description": "StaticEditorFlags by NAME, for the same reason as layer. The full set is sent, not a delta."
+        },
+        "materialVariant": {
+          "type": ["string", "null"],
+          "description": "Key of a variant declared in palette.items[].materialVariants for THIS prefabPath, or null for the prefab default. The importer resolves the key through the palette and never accepts a material path from the diff — the same closed-set rule as prefabPath."
+        }
       }
     }
   }

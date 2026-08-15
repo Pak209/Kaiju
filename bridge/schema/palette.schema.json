@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "holocity.palette.1-0-0",
+  "$id": "holocity.palette.1-1-0",
   "title": "HoloCity Placement Palette",
-  "description": "Catalog of placeable prefabs, exported by Unity alongside the scene. The web editor's add-from-library sidebar is built from this and ONLY this — a prefabPath not in the palette can never appear in a diff's added[].",
+  "description": "Catalog of placeable prefabs, exported by Unity alongside the scene. The web editor's add-from-library sidebar is built from this and ONLY this — a prefabPath not in the palette can never appear in a diff's added[], and a materialVariant key not declared here can never be applied.",
   "type": "object",
   "required": ["schemaVersion", "kind", "items"],
   "properties": {
-    "schemaVersion": { "const": "1.0.0" },
+    "schemaVersion": { "const": "1.1.0" },
     "kind": { "const": "holocity.palette" },
     "items": {
       "type": "array",
@@ -20,7 +20,26 @@
           "glb": { "type": "string" },
           "thumbnail": { "type": "string" },
           "defaultScale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
-          "defaultRotation": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4, "description": "kit prefabs carry axis-fix rotations on the ROOT; placement must COMPOSE with this default, never overwrite it" }
+          "defaultRotation": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 4,
+            "maxItems": 4,
+            "description": "The prefab root's own axis-fix rotation. The web editor SEEDS an added item with this and thereafter stores the ABSOLUTE rotation; the importer assigns that absolute value. Do NOT compose on the Unity side — 1.0.0's text said compose and the importer did, which applied the axis fix twice on the ~92% of palette items whose default is non-identity."
+          },
+          "materialVariants": {
+            "type": "array",
+            "description": "The CLOSED SET of named material swaps allowed for this prefab. A diff may name a key from this list and nothing else; material asset paths never cross the boundary, for the same reason arbitrary prefabPaths do not. Sourced from HoloCityVariantSet assets in the project — an empty or absent list means this prefab has no variants.",
+            "items": {
+              "type": "object",
+              "required": ["key", "displayName"],
+              "properties": {
+                "key": { "type": "string", "description": "stable id, referenced by placement_diff state.materialVariant" },
+                "displayName": { "type": "string" },
+                "swatch": { "type": "string", "description": "optional hex colour the web editor can show without loading the material" }
+              }
+            }
+          }
         }
       }
     }

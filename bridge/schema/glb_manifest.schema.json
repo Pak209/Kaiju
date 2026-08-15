@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "holocity.glb-manifest.1-0-0",
+  "$id": "holocity.glb-manifest.1-1-0",
   "title": "HoloCity GLB Manifest",
   "description": "Written by Unity to glb/manifest.json inside a bundle. Maps each exported prefab to its GLB and a content hash, so a re-export skips prefabs whose content has not changed. Re-exporting every GLB on every run costs minutes of editor time for a whole town, and a pipeline that costs minutes per iteration stops being used. DELETE THIS FILE TO FORCE A FULL REBUILD.",
   "type": "object",
   "required": ["schemaVersion", "kind", "exporterVersion", "entries"],
   "properties": {
-    "schemaVersion": { "const": "1.0.0" },
+    "schemaVersion": { "const": "1.1.0" },
     "kind": { "const": "holocity.glb-manifest" },
     "exporterVersion": {
       "type": "string",

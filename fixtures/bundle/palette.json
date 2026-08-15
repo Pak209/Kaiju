@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "kind": "holocity.palette",
   "items": [
     {
@@ -17,7 +17,8 @@
         0,
         0,
         1
-      ]
+      ],
+      "materialVariants": []
     },
     {
       "prefabPath": "Assets/HoloCity/BlockB.prefab",
@@ -34,7 +35,8 @@
         0,
         0,
         1
-      ]
+      ],
+      "materialVariants": []
     },
     {
       "prefabPath": "Assets/HoloCity/Tower.prefab",
@@ -51,7 +53,8 @@
         0,
         0,
         1
-      ]
+      ],
+      "materialVariants": []
     },
     {
       "prefabPath": "Assets/HoloCity/LShape.prefab",
@@ -68,6 +71,13 @@
         0,
         0,
         1
+      ],
+      "materialVariants": [
+        {
+          "key": "dusk",
+          "displayName": "Dusk",
+          "swatch": "#31556e"
+        }
       ]
     }
   ]

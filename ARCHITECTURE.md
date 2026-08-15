@@ -90,6 +90,23 @@ modelling faults rather than pipeline bugs:
    coherent, but it is *not* what is implemented, and mixing the two is what
    the `add-then-rotate` golden exists to catch.
 
+### State crosses the boundary with absence semantics (1.1.0)
+
+Beyond transforms, a diff may carry `state`: reparent, active, layer, tag,
+static flags, material variant. Three rules:
+
+1. **A key absent from `state` means "leave it alone"** — not "set to
+   default". A diff never claims authority over a field the session did not
+   touch, so a stale session cannot stomp a deliberate Unity-side edit.
+2. **Every `state` key on a modify needs its `priorState` twin**, and the live
+   scene must still match it. An unverifiable change is refused, not trusted.
+   Adds skip priors — a new object has nothing to conflict with.
+3. **Names, never indices; keys, never paths.** Layers and static flags travel
+   by name (a stale index lands wrong silently; an unknown name refuses
+   loudly). Material variants travel as keys into the palette's closed
+   `materialVariants` set, declared by `HoloCityVariantSet` assets — a
+   material asset path never crosses the boundary, same rule as prefabPath.
+
 ### Editability is structural, never by name
 
 An entry is editable only if it is an outermost prefab instance and **every

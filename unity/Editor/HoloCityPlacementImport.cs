@@ -37,8 +37,37 @@ namespace Holobots.EditorTools.Placement
                                && scale != null && scale.Length == 3;
         }
 
-        [System.Serializable] private sealed class ModEntry { public string id; public Xform transform, priorTransform; }
-        [System.Serializable] private sealed class AddEntry { public string tempId, prefabPath; public Xform transform; }
+        /// <summary>
+        /// Non-transform state. JsonUtility cannot distinguish "absent" from
+        /// "default", so raw JSON key presence is checked via <see cref="Has"/>
+        /// — an absent key means "leave it alone" and that distinction is the
+        /// contract (a diff must not stomp fields the session never touched).
+        /// parentId uses a sentinel for the same reason: null is a meaningful
+        /// value here (scene root), not an absence.
+        /// </summary>
+        [System.Serializable] private sealed class StateJson
+        {
+            public string parentId, layer, tag, materialVariant;
+            public bool active;
+            public string[] staticFlags;
+        }
+
+        [System.Serializable] private sealed class ModEntry
+        {
+            public string id;
+            public Xform transform, priorTransform;
+            public StateJson state, priorState;
+            [System.NonSerialized] public HashSet<string> stateKeys, priorStateKeys;
+            [System.NonSerialized] public bool parentIsNull, priorParentIsNull;
+        }
+        [System.Serializable] private sealed class AddEntry
+        {
+            public string tempId, prefabPath;
+            public Xform transform;
+            public StateJson state;
+            [System.NonSerialized] public HashSet<string> stateKeys;
+            [System.NonSerialized] public bool parentIsNull;
+        }
         [System.Serializable] private sealed class DelEntry { public string id; public Xform priorTransform; }
 
         [System.Serializable] private sealed class Diff
@@ -96,8 +125,18 @@ namespace Holobots.EditorTools.Placement
 
         private void DryRun()
         {
+            // Newtonsoft rather than JsonUtility, because state semantics hang
+            // on ABSENT vs PRESENT-WITH-DEFAULT-VALUE — "omit active" means
+            // leave it alone while "active: false" is an instruction — and
+            // JsonUtility cannot see the difference. The key sets captured
+            // here are that distinction.
             Diff d;
-            try { d = JsonUtility.FromJson<Diff>(System.IO.File.ReadAllText(_path)); }
+            try
+            {
+                var root = Newtonsoft.Json.Linq.JObject.Parse(System.IO.File.ReadAllText(_path));
+                d = root.ToObject<Diff>();
+                CaptureStateKeys(root, d);
+            }
             catch (System.Exception ex) { _fatal.Add("Could not parse JSON: " + ex.Message); return; }
             if (d == null) { _fatal.Add("Could not parse JSON: empty document."); return; }
 
@@ -153,7 +192,8 @@ namespace Holobots.EditorTools.Placement
 
         private void Check(ModEntry m, HashSet<string> palette)
         {
-            var row = new Row { op = "MODIFY", subject = m.id };
+            bool hasState = m.stateKeys != null && m.stateKeys.Count > 0;
+            var row = new Row { op = hasState ? "MODIFY+" : "MODIFY", subject = m.id };
             _rows.Add(row);
             if (m.transform == null || !m.transform.Shaped || m.priorTransform == null || !m.priorTransform.Shaped)
             { Refuse(row, "malformed transform."); return; }
@@ -181,9 +221,21 @@ namespace Holobots.EditorTools.Placement
                 return;
             }
 
+            System.Action<GameObject> applyState = null;
+            if (hasState)
+            {
+                string ppath = null;
+                var src = PrefabUtility.GetCorrespondingObjectFromOriginalSource(go);
+                if (src != null) ppath = AssetDatabase.GetAssetPath(src);
+                string err = CheckState(go, ppath, m.state, m.stateKeys, m.parentIsNull,
+                                        m.priorState, m.priorStateKeys, out applyState, out bool conflict);
+                if (err != null) { row.conflict = conflict; Refuse(row, err); return; }
+            }
+
             var t = go.transform;
             var p = m.transform.Pos; var r = m.transform.Rot; var s = m.transform.Scale;
-            row.detail = "move " + dp.ToString("F2") + "m -> " + p.ToString("F2");
+            row.detail = "move " + dp.ToString("F2") + "m -> " + p.ToString("F2")
+                       + (hasState ? "  state[" + string.Join(", ", m.stateKeys.OrderBy(x => x)) + "]" : "");
             row.apply = () =>
             {
                 Undo.RecordObject(t, "Import placement");
@@ -194,13 +246,20 @@ namespace Holobots.EditorTools.Placement
                 // the root — where every fixture lives — and only reachable
                 // because CollectFrom descends through locked context, so an
                 // editable instance can sit under a scaled locked parent.
+                //
+                // ORDER: reparent (in applyState) runs AFTER the transform so
+                // the world pose set here survives — SetTransformParent keeps
+                // world position, and WorldToLocalScale is computed against
+                // the CURRENT parent either way.
                 t.localScale = WorldToLocalScale(t, s);
+                applyState?.Invoke(go);
             };
         }
 
         private void Check(AddEntry a, HashSet<string> palette)
         {
-            var row = new Row { op = "ADD", subject = a.prefabPath };
+            bool hasState = a.stateKeys != null && a.stateKeys.Count > 0;
+            var row = new Row { op = hasState ? "ADD+" : "ADD", subject = a.prefabPath };
             _rows.Add(row);
             if (a.transform == null || !a.transform.Shaped) { Refuse(row, "malformed transform."); return; }
             if (string.IsNullOrEmpty(a.prefabPath) || !palette.Contains(a.prefabPath))
@@ -212,8 +271,20 @@ namespace Holobots.EditorTools.Placement
             string sane = Sanity(a.transform);
             if (sane != null) { Refuse(row, sane); return; }
 
+            System.Action<GameObject> applyState = null;
+            if (hasState)
+            {
+                // go is null: values are validated now, priors are skipped —
+                // a new object has nothing to conflict with — and the steps
+                // run against the instance created below.
+                string err = CheckState(null, a.prefabPath, a.state, a.stateKeys, a.parentIsNull,
+                                        null, null, out applyState, out _);
+                if (err != null) { Refuse(row, err); return; }
+            }
+
             var pos = a.transform.Pos; var rot = a.transform.Rot; var scl = a.transform.Scale;
-            row.detail = "instantiate at " + pos.ToString("F2");
+            row.detail = "instantiate at " + pos.ToString("F2")
+                       + (hasState ? "  state[" + string.Join(", ", a.stateKeys.OrderBy(x => x)) + "]" : "");
             row.apply = () =>
             {
                 var inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
@@ -233,6 +304,7 @@ namespace Holobots.EditorTools.Placement
                 inst.transform.localScale = WorldToLocalScale(inst.transform, scl);
                 inst.name = prefab.name + "_wp" + NextIndex(prefab.name).ToString("D3");
                 Undo.RegisterCreatedObjectUndo(inst, "Import placement");
+                applyState?.Invoke(inst);
             };
         }
 
@@ -299,6 +371,186 @@ namespace Holobots.EditorTools.Placement
             go.transform.SetParent(root, true);
             Undo.RecordObject(go, "Import placement");
             go.SetActive(false);
+        }
+
+        // ----------------------------------------------------------- state
+
+        private static void CaptureStateKeys(Newtonsoft.Json.Linq.JObject root, Diff d)
+        {
+            System.Func<Newtonsoft.Json.Linq.JToken, string, (HashSet<string>, bool)> keysOf = (tok, name) =>
+            {
+                var o = tok?[name] as Newtonsoft.Json.Linq.JObject;
+                if (o == null) return (null, false);
+                var keys = new HashSet<string>(o.Properties().Select(p => p.Name));
+                bool parentNull = o.TryGetValue("parentId", out var pv)
+                                  && pv.Type == Newtonsoft.Json.Linq.JTokenType.Null;
+                return (keys, parentNull);
+            };
+
+            var mods = root["modified"] as Newtonsoft.Json.Linq.JArray;
+            for (int i = 0; mods != null && i < mods.Count && i < (d.modified?.Length ?? 0); i++)
+            {
+                (d.modified[i].stateKeys, d.modified[i].parentIsNull) = keysOf(mods[i], "state");
+                (d.modified[i].priorStateKeys, d.modified[i].priorParentIsNull) = keysOf(mods[i], "priorState");
+            }
+            var adds = root["added"] as Newtonsoft.Json.Linq.JArray;
+            for (int i = 0; adds != null && i < adds.Count && i < (d.added?.Length ?? 0); i++)
+                (d.added[i].stateKeys, d.added[i].parentIsNull) = keysOf(adds[i], "state");
+        }
+
+        /// <summary>
+        /// Validates one entry's state block and builds its apply step.
+        /// Returns null on success; otherwise the refusal reason, with
+        /// <paramref name="conflict"/> set when the reason is that the scene
+        /// moved under the session (as opposed to a bad value).
+        ///
+        /// For modified entries every key present in `state` must also be in
+        /// `priorState` and the live scene must still match the prior — a
+        /// state change that cannot be conflict-checked is refused, not
+        /// trusted. For adds (<paramref name="go"/> null at check time,
+        /// resolved by the caller at apply time) the prior checks are skipped:
+        /// a new object has nothing to conflict with.
+        /// </summary>
+        private string CheckState(GameObject go, string prefabPath, StateJson state, HashSet<string> keys,
+                                  bool parentIsNull, StateJson prior, HashSet<string> priorKeys,
+                                  out System.Action<GameObject> apply, out bool conflict)
+        {
+            apply = null; conflict = false;
+            if (keys == null || keys.Count == 0) return null;
+            var steps = new List<System.Action<GameObject>>();
+            bool checkPrior = go != null;   // modified entry: go resolved; add: skip priors
+
+            if (checkPrior)
+                foreach (var k in keys)
+                    if (priorKeys == null || !priorKeys.Contains(k))
+                        return "state." + k + " has no priorState." + k + " — an unverifiable change is refused, not trusted.";
+
+            if (keys.Contains("active"))
+            {
+                if (checkPrior && go.activeSelf != prior.active)
+                { conflict = true; return "CONFLICT — active is " + go.activeSelf + " in Unity, session expected " + prior.active + "."; }
+                bool v = state.active;
+                steps.Add(g => { Undo.RecordObject(g, "Import placement"); g.SetActive(v); });
+            }
+
+            if (keys.Contains("layer"))
+            {
+                // Names, never indices: indices are project-local, and a stale
+                // index lands on the WRONG layer silently where an unknown
+                // name refuses loudly.
+                int idx = LayerMask.NameToLayer(state.layer ?? "");
+                if (idx < 0) return "layer '" + state.layer + "' does not exist in this project.";
+                if (checkPrior && LayerMask.LayerToName(go.layer) != prior.layer)
+                { conflict = true; return "CONFLICT — layer is '" + LayerMask.LayerToName(go.layer) + "' in Unity, session expected '" + prior.layer + "'."; }
+                // Root only, matching what the exporter reads. Children keep
+                // whatever the prefab authored.
+                steps.Add(g => { Undo.RecordObject(g, "Import placement"); g.layer = idx; });
+            }
+
+            if (keys.Contains("tag"))
+            {
+                if (!UnityEditorInternal.InternalEditorUtility.tags.Contains(state.tag))
+                    return "tag '" + state.tag + "' is not defined in this project.";
+                if (checkPrior && go.tag != prior.tag)
+                { conflict = true; return "CONFLICT — tag is '" + go.tag + "' in Unity, session expected '" + prior.tag + "'."; }
+                string v = state.tag;
+                steps.Add(g => { Undo.RecordObject(g, "Import placement"); g.tag = v; });
+            }
+
+            if (keys.Contains("staticFlags"))
+            {
+                if (!TryParseFlags(state.staticFlags, out var flags, out string bad))
+                    return "staticFlags contains '" + bad + "', which this Unity version does not define.";
+                if (checkPrior)
+                {
+                    if (!TryParseFlags(prior.staticFlags, out var priorFlags, out string badPrior))
+                        return "priorState.staticFlags contains '" + badPrior + "', which this Unity version does not define.";
+                    if (GameObjectUtility.GetStaticEditorFlags(go) != priorFlags)
+                    { conflict = true; return "CONFLICT — static flags changed in Unity after the export."; }
+                }
+                steps.Add(g => { Undo.RecordObject(g, "Import placement"); GameObjectUtility.SetStaticEditorFlags(g, flags); });
+            }
+
+            if (keys.Contains("materialVariant"))
+            {
+                var sets = HoloCityVariantSet.ByPrefabPath();
+                sets.TryGetValue(prefabPath ?? "", out var set);
+                if (checkPrior)
+                {
+                    string live = set == null ? null : set.CurrentKey(go);
+                    if (live != prior.materialVariant)
+                    { conflict = true; return "CONFLICT — material variant is '" + (live ?? "<default>") + "' in Unity, session expected '" + (prior.materialVariant ?? "<default>") + "'."; }
+                }
+                string key = state.materialVariant;
+                if (key == null)
+                {
+                    // null = back to the prefab's own materials, read from the
+                    // prefab asset itself so this cannot invent a material.
+                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath ?? "");
+                    if (prefab == null) return "materialVariant: null needs the prefab at '" + prefabPath + "', which is missing.";
+                    var defaults = HoloCityVariantSet.FlattenSlots(prefab)
+                        .Select(s => s.renderer.sharedMaterials[s.slot]).ToArray();
+                    steps.Add(g =>
+                    {
+                        var slots = HoloCityVariantSet.FlattenSlots(g);
+                        if (slots.Count != defaults.Length) { Debug.LogError("[PlacementImport] " + g.name + ": slot count changed; variant reset skipped."); return; }
+                        foreach (var grp in slots.Select((s, i) => (s.renderer, s.slot, i)).GroupBy(x => x.renderer))
+                        {
+                            var mats = grp.Key.sharedMaterials;
+                            foreach (var x in grp) mats[x.slot] = defaults[x.i];
+                            Undo.RecordObject(grp.Key, "Import placement");
+                            grp.Key.sharedMaterials = mats;
+                        }
+                    });
+                }
+                else
+                {
+                    if (set == null) return "no HoloCityVariantSet exists for '" + prefabPath + "' — variant keys are refused unless a human declared them.";
+                    if (set.Find(key) == null) return "variant '" + key + "' is not declared for '" + prefabPath + "'.";
+                    steps.Add(g =>
+                    {
+                        string err = set.Apply(g, key);
+                        if (err != null) Debug.LogError("[PlacementImport] " + g.name + ": " + err);
+                    });
+                }
+            }
+
+            if (keys.Contains("parentId"))
+            {
+                Transform newParent = null;
+                if (!parentIsNull)
+                {
+                    var p = Resolve(state.parentId);
+                    if (p == null) return "parentId does not resolve in this scene.";
+                    if (go != null && p.transform.IsChildOf(go.transform))
+                        return "reparent refused — '" + p.name + "' is inside the object's own subtree (cycle).";
+                    var top = p.transform.root;
+                    if (top != null && top.name == TrashRootName)
+                        return "reparent refused — target parent is in " + TrashRootName + ".";
+                    newParent = p.transform;
+                }
+                if (checkPrior && prior.parentId != null)
+                {
+                    var pp = Resolve(prior.parentId);
+                    if (pp == null || !go.transform.IsChildOf(pp.transform))
+                    { conflict = true; return "CONFLICT — the object was reparented in Unity after the export."; }
+                }
+                steps.Add(g => Undo.SetTransformParent(g.transform, newParent, true, "Import placement"));
+            }
+
+            apply = g => { foreach (var s in steps) s(g); };
+            return null;
+        }
+
+        private static bool TryParseFlags(string[] names, out StaticEditorFlags flags, out string bad)
+        {
+            flags = 0; bad = null;
+            foreach (var n in names ?? new string[0])
+            {
+                if (!System.Enum.TryParse<StaticEditorFlags>(n, out var f)) { bad = n; return false; }
+                flags |= f;
+            }
+            return true;
         }
 
         // --------------------------------------------------------- helpers
