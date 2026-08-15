@@ -32,7 +32,99 @@ namespace Holobots.EditorTools.Placement
         private static string _glbDir;
         private static Action<int, List<string>> _onDone;
         private static List<string> _failed;
-        private static int _written, _total;
+        private static int _written, _total, _reused;
+
+        // ------------------------------------------------------------ manifest
+
+        /// <summary>
+        /// Bump when anything about the emitted GLB changes — settings, the
+        /// identity-transform rule, the glTFast major. It is mixed into every
+        /// content hash, so bumping it invalidates the whole cache in one move.
+        /// </summary>
+        private const string ExporterVersion = "glb-1";
+
+        public const string ManifestName = "manifest.json";
+
+        [Serializable] private sealed class ManifestEntry { public string prefabPath, glb, hash; }
+        [Serializable] private sealed class Manifest
+        {
+            public string schemaVersion = "1.0.0";
+            public string kind = "holocity.glb-manifest";
+            public string exporterVersion = ExporterVersion;
+            public ManifestEntry[] entries;
+        }
+
+        private static Dictionary<string, string> _priorHashes;   // prefabPath -> hash
+        private static Dictionary<string, string> _newHashes;
+
+        /// <summary>
+        /// Content hash for one prefab. <see cref="AssetDatabase.GetAssetDependencyHash"/>
+        /// already covers the asset, its importer settings, AND its dependency
+        /// graph — so a retextured material or a reimported FBX changes it
+        /// without us enumerating what to look at. Enumerating by hand is how
+        /// a cache goes stale in exactly the case nobody thought of.
+        /// </summary>
+        private static string ContentHash(string prefabPath)
+            => ExporterVersion + ":" + AssetDatabase.GetAssetDependencyHash(prefabPath);
+
+        private static void LoadManifest()
+        {
+            _priorHashes = new Dictionary<string, string>();
+            _newHashes = new Dictionary<string, string>();
+            string p = System.IO.Path.Combine(_glbDir, ManifestName);
+            if (!System.IO.File.Exists(p)) return;
+            try
+            {
+                var m = JsonUtility.FromJson<Manifest>(System.IO.File.ReadAllText(p));
+                // A manifest from a different exporter version describes GLBs
+                // this build would not produce. Ignore it wholesale rather than
+                // trusting entry-by-entry.
+                if (m == null || m.exporterVersion != ExporterVersion || m.entries == null) return;
+                foreach (var e in m.entries)
+                    if (!string.IsNullOrEmpty(e?.prefabPath)) _priorHashes[e.prefabPath] = e.hash;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[GlbExport] manifest unreadable, rebuilding everything: " + ex.Message);
+                _priorHashes.Clear();
+            }
+        }
+
+        private static void WriteManifest()
+        {
+            var entries = _newHashes
+                .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                .Select(kv => new ManifestEntry
+                {
+                    prefabPath = kv.Key,
+                    glb = System.IO.Path.GetFileName(GlbPathFor(kv.Key)),
+                    hash = kv.Value,
+                })
+                .ToArray();
+            var m = new Manifest { entries = entries };
+            System.IO.File.WriteAllText(System.IO.Path.Combine(_glbDir, ManifestName),
+                                        JsonUtility.ToJson(m, true) + "\n");
+        }
+
+        private static string GlbPathFor(string prefabPath)
+        {
+            string name = System.IO.Path.GetFileNameWithoutExtension(prefabPath);
+            return System.IO.Path.Combine(_glbDir, name + ".glb");
+        }
+
+        /// <summary>
+        /// A cached GLB counts only if the hash matches AND the file is really
+        /// there with bytes in it. A manifest entry pointing at a missing or
+        /// truncated file is the failure this check exists for — it is what a
+        /// half-finished previous run leaves behind.
+        /// </summary>
+        private static bool CanReuse(string prefabPath)
+        {
+            if (!_priorHashes.TryGetValue(prefabPath, out string prior)) return false;
+            if (prior != ContentHash(prefabPath)) return false;
+            string out_ = GlbPathFor(prefabPath);
+            return System.IO.File.Exists(out_) && new System.IO.FileInfo(out_).Length > 0;
+        }
 
         private static System.Threading.Tasks.Task<bool> _task;
         private static GameObject _temp;
@@ -60,20 +152,48 @@ namespace Holobots.EditorTools.Placement
         {
             if (IsRunning) { Debug.LogWarning("[GlbExport] already running."); return; }
 
-            _queue = new Queue<string>(prefabPaths.Distinct().OrderBy(x => x, StringComparer.Ordinal));
             _glbDir = glbDir;
             _onDone = onDone;
             _failed = new List<string>();
             _written = 0;
-            _total = _queue.Count;
+            _reused = 0;
             System.IO.Directory.CreateDirectory(_glbDir);
+
+            // INCREMENTAL. Re-exporting every GLB on every run is minutes of
+            // editor time for a whole town, and a pipeline that costs minutes
+            // per iteration stops being used. Skip the prefabs whose content
+            // hash is unchanged and whose GLB is still on disk.
+            //
+            // To force a full rebuild, delete glb/manifest.json.
+            LoadManifest();
+
+            var ordered = prefabPaths.Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
+            var todo = new List<string>();
+            foreach (var p in ordered)
+            {
+                if (CanReuse(p)) { _reused++; _newHashes[p] = _priorHashes[p]; }
+                else todo.Add(p);
+            }
+
+            _queue = new Queue<string>(todo);
+            _total = _queue.Count;
+
+            if (_total == 0)
+            {
+                Debug.Log($"[GlbExport] nothing to do — all {_reused} GLB(s) up to date in {_glbDir}");
+                WriteManifest();
+                var none = _failed; _failed = null; _queue = null;
+                onDone?.Invoke(_reused, none);
+                return;
+            }
 
             if (ExportType == null) { Fail("glTFast not loaded — no GLBs written."); return; }
             // Refuse rather than proceed with a null agent: a null agent restores
             // the yielding behaviour and is how the deadlock came back the second time.
             if (DeferAgentType == null) { Fail("UninterruptedDeferAgent not found — refusing to export."); return; }
 
-            Debug.Log($"[GlbExport] starting: {_total} prefab(s) -> {_glbDir}");
+            Debug.Log($"[GlbExport] starting: {_total} prefab(s) to export, "
+                      + $"{_reused} reused from manifest -> {_glbDir}");
             EditorApplication.update += Tick;
         }
 
@@ -108,7 +228,15 @@ namespace Holobots.EditorTools.Placement
 
                 bool ok = !_task.IsFaulted && _task.Result;
                 if (ok && System.IO.File.Exists(_currentOut) && new System.IO.FileInfo(_currentOut).Length > 0)
+                {
                     _written++;
+                    // Record the hash ONLY on a verified successful write. A
+                    // failed or timed-out prefab must stay absent from the
+                    // manifest so the next run retries it — caching a failure
+                    // as done is how a bundle ends up permanently missing a
+                    // mesh while every subsequent export reports success.
+                    _newHashes[_currentPath] = ContentHash(_currentPath);
+                }
                 else
                     _failed.Add(_currentPath + (_task.IsFaulted
                         ? " (" + _task.Exception?.GetBaseException().Message + ")"
@@ -184,13 +312,22 @@ namespace Holobots.EditorTools.Placement
             EditorApplication.update -= Tick;
             CleanupCurrent();
             var done = _onDone;
-            int written = _written;
+            int written = _written, reused = _reused;
             var failed = _failed ?? new List<string>();
+
+            // Written before the callback so the manifest is on disk even if a
+            // consumer throws. A partial run still writes what it achieved —
+            // the entries it recorded are exactly the verified successes, so
+            // the next run picks up where this one stopped.
+            try { if (_newHashes != null) WriteManifest(); }
+            catch (Exception ex) { Debug.LogWarning("[GlbExport] manifest write failed: " + ex.Message); }
+
             _queue = null; _onDone = null; _failed = null;
             AssetDatabase.Refresh();
-            Debug.Log($"[GlbExport] finished: {written} written, {failed.Count} failed."
-                      + (failed.Count > 0 ? "\n  FAILED:\n    " + string.Join("\n    ", failed) : ""));
-            done?.Invoke(written, failed);
+            Debug.Log($"[GlbExport] finished: {written} written, {reused} reused, {failed.Count} failed."
+                      + (failed.Count > 0 ? "\n  FAILED:\n    " + string.Join("\n    ", failed) : "")
+                      + "\n  (delete glb/" + ManifestName + " to force a full rebuild)");
+            done?.Invoke(written + reused, failed);
         }
     }
 }

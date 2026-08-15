@@ -57,12 +57,13 @@ namespace Holobots.EditorTools.Placement
         {
             public string op, subject, detail;
             public Verdict verdict;
+            public bool conflict;      // refused specifically because the scene moved under the session
             public System.Action apply;
         }
 
         private readonly List<Row> _rows = new List<Row>();
         private readonly List<string> _fatal = new List<string>();
-        private string _path, _summary;
+        private string _path, _summary, _staleBanner;
         private Vector2 _scroll;
 
         /// <summary>Position sanity bound. A town-scale scene; anything beyond this is a unit or handedness bug.</summary>
@@ -111,17 +112,22 @@ namespace Holobots.EditorTools.Placement
             if (d.sceneName != scene.name)
                 _fatal.Add("diff targets scene '" + d.sceneName + "' but '" + scene.name + "' is open.");
 
-            if (_fatal.Count == 0)
-            {
-                string live = HoloCityPlacementExport.CurrentBaseHash();
-                if (live != d.baseHash)
-                    _fatal.Add("STALE SESSION — baseHash mismatch.\n    diff was built against " + Short(d.baseHash)
-                               + "\n    scene now hashes to      " + Short(live)
-                               + "\n    The scene changed after the export. Re-export, redo the placement, or "
-                               + "accept losing this session's work — this importer will not guess which "
-                               + "version is right.");
-            }
             if (_fatal.Count > 0) return;
+
+            // baseHash is a WARNING, not a gate.
+            //
+            // It hashes the whole scene, so it trips on any edit at all — a
+            // light, a material, a terrain tweak by someone else. Making that
+            // fatal meant you could not touch Unity while a browser session was
+            // open, and a whole placement session died to an unrelated change.
+            // That cost is real and the information gained is coarse.
+            //
+            // priorTransform already does this job per entry, and does it
+            // precisely: it knows WHICH objects moved rather than THAT
+            // something did. So the hash reports, and the per-entry check
+            // decides. See ARCHITECTURE.md §3.
+            string liveHash = HoloCityPlacementExport.CurrentBaseHash();
+            bool stale = liveHash != d.baseHash;
 
             var palette = PalettePaths();
 
@@ -130,7 +136,19 @@ namespace Holobots.EditorTools.Placement
             foreach (var x in d.deleted ?? new DelEntry[0]) Check(x);
 
             int ok = _rows.Count(r => r.verdict == Verdict.Ok);
+            int conflicts = _rows.Count(r => r.conflict);
             _summary = _rows.Count + " change(s): " + ok + " will apply, " + (_rows.Count - ok) + " refused.";
+
+            if (stale)
+            {
+                _staleBanner = "Scene changed since export — "
+                    + conflicts + " of " + _rows.Count + " entries conflict.\n"
+                    + (conflicts == 0
+                        ? "None of this diff's objects were touched, so every entry above is still safe to apply."
+                        : "The conflicting entries are refused individually and listed below. "
+                          + "The rest are unaffected and can be applied.")
+                    + "\n\nexported against " + Short(d.baseHash) + ", scene now " + Short(liveHash);
+            }
         }
 
         private void Check(ModEntry m, HashSet<string> palette)
@@ -155,6 +173,7 @@ namespace Holobots.EditorTools.Placement
             float dr = Quaternion.Angle(go.transform.rotation, m.priorTransform.Rot);
             if (dp > PriorPosEpsilon || dr > PriorRotEpsilonDeg)
             {
+                row.conflict = true;
                 Refuse(row, "CONFLICT — the object moved in Unity after the export.\n"
                     + "        scene is at " + go.transform.position.ToString("F3")
                     + ", diff expected " + m.priorTransform.Pos.ToString("F3")
@@ -165,7 +184,18 @@ namespace Holobots.EditorTools.Placement
             var t = go.transform;
             var p = m.transform.Pos; var r = m.transform.Rot; var s = m.transform.Scale;
             row.detail = "move " + dp.ToString("F2") + "m -> " + p.ToString("F2");
-            row.apply = () => { Undo.RecordObject(t, "Import placement"); t.SetPositionAndRotation(p, r); t.localScale = s; };
+            row.apply = () =>
+            {
+                Undo.RecordObject(t, "Import placement");
+                t.SetPositionAndRotation(p, r);
+                // WORLD IN, LOCAL OUT. The exporter writes lossyScale (world);
+                // assigning it straight to localScale multiplies by the parent's
+                // scale again, and it compounds every round trip. Invisible at
+                // the root — where every fixture lives — and only reachable
+                // because CollectFrom descends through locked context, so an
+                // editable instance can sit under a scaled locked parent.
+                t.localScale = WorldToLocalScale(t, s);
+            };
         }
 
         private void Check(AddEntry a, HashSet<string> palette)
@@ -188,13 +218,19 @@ namespace Holobots.EditorTools.Placement
             {
                 var inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
                 inst.transform.position = pos;
-                // COMPOSE with the prefab's default root rotation. Kit prefabs carry
-                // their axis fix on the root — 110 of 119 palette items in the first
-                // real export had a non-identity default — so overwriting would land
-                // almost every placement wrong, and wrong in a way that reads as a
-                // modelling fault rather than an import bug.
-                inst.transform.rotation = rot * prefab.transform.rotation;
-                inst.transform.localScale = scl;
+                // ASSIGN, DO NOT COMPOSE. Kit prefabs carry an axis fix on the
+                // root (110 of 119 palette items are non-identity), and this
+                // line used to multiply by it — but the web editor already
+                // seeds an added item with palette.defaultRotation and stores
+                // the total (src/core.ts addItem; nothing composes it again for
+                // display). Composing here applied the axis fix TWICE, on ~92%
+                // of adds, and the result reads as a modelling fault rather
+                // than an import bug.
+                //
+                // Absolute-on-both-sides is now the declared rule — it is what
+                // modified[] and scale already do. ARCHITECTURE.md §2.
+                inst.transform.rotation = rot;
+                inst.transform.localScale = WorldToLocalScale(inst.transform, scl);
                 inst.name = prefab.name + "_wp" + NextIndex(prefab.name).ToString("D3");
                 Undo.RegisterCreatedObjectUndo(inst, "Import placement");
             };
@@ -213,10 +249,56 @@ namespace Holobots.EditorTools.Placement
             {
                 float dp = Vector3.Distance(go.transform.position, x.priorTransform.Pos);
                 if (dp > PriorPosEpsilon)
-                { Refuse(row, "CONFLICT — moved in Unity after the export (off by " + dp.ToString("F3") + "m)."); return; }
+                {
+                    row.conflict = true;
+                    Refuse(row, "CONFLICT — moved in Unity after the export (off by " + dp.ToString("F3") + "m).");
+                    return;
+                }
             }
-            row.detail = "delete";
-            row.apply = () => Undo.DestroyObjectImmediate(go);
+            row.detail = "-> " + TrashRootName + " (deactivated, recoverable)";
+            row.apply = () => Trash(go);
+        }
+
+        // ------------------------------------------------------------- trash
+
+        private const string TrashRootName = "_PlacerTrash";
+
+        /// <summary>
+        /// A diff delete DEACTIVATES AND REPARENTS; it does not destroy.
+        ///
+        /// Undo covers the session, but a domain reload ends the session and a
+        /// destroyed object is then gone for good. Deletes arrive in batches
+        /// from a browser session where they were cheap to make, so the one
+        /// that turns out to be wrong is discovered later — after a reload,
+        /// after a play-mode entry — which is exactly when Undo no longer
+        /// helps. A deactivated root costs nothing and makes the mistake
+        /// survivable.
+        ///
+        /// The trash root is stripped before a build the same way any editor-
+        /// only scaffolding is; it is not shipped content.
+        /// </summary>
+        private static void Trash(GameObject go)
+        {
+            var scene = go.scene;
+            Transform root = null;
+            foreach (var r in scene.GetRootGameObjects())
+                if (r.name == TrashRootName) { root = r.transform; break; }
+
+            if (root == null)
+            {
+                var created = new GameObject(TrashRootName);
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(created, scene);
+                created.SetActive(false);
+                Undo.RegisterCreatedObjectUndo(created, "Import placement");
+                root = created.transform;
+            }
+
+            // Keep the world transform so a recovered object lands back where it
+            // was, rather than wherever the trash root happens to sit.
+            Undo.SetTransformParent(go.transform, root, "Import placement");
+            go.transform.SetParent(root, true);
+            Undo.RecordObject(go, "Import placement");
+            go.SetActive(false);
         }
 
         // --------------------------------------------------------- helpers
@@ -237,6 +319,28 @@ namespace Holobots.EditorTools.Placement
         }
 
         private static void Refuse(Row r, string why) { r.verdict = Verdict.Refused; r.detail = why; }
+
+        /// <summary>
+        /// Convert a world-space scale from the contract into the localScale
+        /// that produces it under this transform's current parent.
+        ///
+        /// Exact for the axis-aligned case, which is what kit placement is. A
+        /// non-uniformly scaled AND rotated parent cannot be represented by a
+        /// localScale at all — Unity's own lossyScale is an approximation
+        /// there too — so this reproduces Unity's own convention rather than
+        /// inventing a better one. The Sanity() bounds catch the pathological
+        /// results if one ever arises.
+        /// </summary>
+        private static Vector3 WorldToLocalScale(Transform t, Vector3 world)
+        {
+            var parent = t.parent;
+            if (parent == null) return world;
+            var ps = parent.lossyScale;
+            return new Vector3(
+                Mathf.Approximately(ps.x, 0f) ? world.x : world.x / ps.x,
+                Mathf.Approximately(ps.y, 0f) ? world.y : world.y / ps.y,
+                Mathf.Approximately(ps.z, 0f) ? world.z : world.z / ps.z);
+        }
 
         private static GameObject Resolve(string globalObjectId)
         {
@@ -300,6 +404,9 @@ namespace Holobots.EditorTools.Placement
                 if (GUILayout.Button("Close")) Close();
                 return;
             }
+
+            if (!string.IsNullOrEmpty(_staleBanner))
+                EditorGUILayout.HelpBox(_staleBanner, MessageType.Warning);
 
             EditorGUILayout.HelpBox(_summary ?? "", MessageType.Info);
             _scroll = EditorGUILayout.BeginScrollView(_scroll);

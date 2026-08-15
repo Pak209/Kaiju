@@ -290,140 +290,22 @@ namespace Holobots.EditorTools.Placement
         }
 
         // --------------------------------------------------------------- glTF
-
-        /// <summary>
-        /// One GLB per DISTINCT PREFAB, not per instance — a town with 40 copies
-        /// of a wall ships one wall mesh and 40 transforms. Instances are placed
-        /// by the manifest, so a per-instance export would multiply bundle size
-        /// by the repeat count for no visual gain.
-        ///
-        /// Every prefab is exported at IDENTITY. The manifest carries each
-        /// instance's world transform and the palette carries the prefab's own
-        /// default rotation, so baking any rotation into the GLB would apply the
-        /// axis fix twice.
-        ///
-        /// Failures are COLLECTED AND NAMED, never swallowed. A bundle missing a
-        /// prefab still opens and still looks complete, which is the one failure
-        /// mode worth being loud about.
-        /// </summary>
-        private static (int written, List<string> failed) ExportGlbs(List<Entry> entries, string outDir)
-        {
-            var failed = new List<string>();
-
-            // ============================ DISABLED ============================
-            // This path BLOCKS THE MAIN THREAD on glTFast's async export, which
-            // DEADLOCKS THE EDITOR — it froze Unity twice on 2026-08-02 and had
-            // to be force-quit both times (0.5% CPU, a 0-byte GLB on disk).
-            // UninterruptedDeferAgent did NOT fix it: the problem is the blocking
-            // wait itself, not the agent, so it is wrong at the design level and
-            // no parameter tweak rescues it.
-            //
-            // The rewrite is scoped and parked: async end to end, pumped from
-            // EditorApplication.update, completion reported via callback, never
-            // blocking the thread the export depends on — which is how glTFast's
-            // own editor menu export works.
-            //
-            // Until then the JSON half is fully usable on its own, so the menu
-            // item stays SAFE rather than being removed. Delete this block only
-            // together with the blocking wait below.
-            failed.Add("GLB export is DISABLED pending the async rewrite — it deadlocks the "
-                       + "editor (see DECISIONS #36 and this method's comment). The scene "
-                       + "manifest and palette above are complete and valid.");
-            return (0, failed);
-            // ==================================================================
-
-#pragma warning disable 162
-            var wanted = new HashSet<string>();
-            foreach (var e in entries)
-                if (!string.IsNullOrEmpty(e.prefabPath)) wanted.Add(e.prefabPath);
-            foreach (var p in PalettePrefabPaths()) wanted.Add(p);
-
-            string glbDir = System.IO.Path.Combine(outDir, "glb");
-            System.IO.Directory.CreateDirectory(glbDir);
-
-            var exportType = System.AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a => { try { return a.GetTypes(); } catch { return new System.Type[0]; } })
-                .FirstOrDefault(t => t.FullName == "GLTFast.Export.GameObjectExport");
-            if (exportType == null)
-            {
-                failed.Add("glTFast not loaded — NO GLBs were written at all (DECISIONS #36).");
-                return (0, failed);
-            }
-
-            int written = 0;
-            foreach (var path in wanted.OrderBy(x => x, System.StringComparer.Ordinal))
-            {
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                if (prefab == null) { failed.Add(path + " (asset missing)"); continue; }
-                string outFile = System.IO.Path.Combine(glbDir, prefab.name + ".glb");
-                GameObject temp = null;
-                try
-                {
-                    temp = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-                    temp.hideFlags = HideFlags.HideAndDontSave;
-                    temp.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-                    temp.transform.localScale = Vector3.one;
-
-                    // Every ctor parameter is OPTIONAL, which reflection cannot
-                    // bind by omission — Activator.CreateInstance(type) throws
-                    // "Default constructor not found". Pass all five explicitly.
-                    var settings = System.Activator.CreateInstance(SettingsType(exportType));
-                    var fmt = SettingsType(exportType).GetProperty("Format");
-                    fmt.SetValue(settings, System.Enum.Parse(fmt.PropertyType, "Binary"));
-                    // deferAgent MUST be an UninterruptedDeferAgent. glTFast's
-                    // export is async and by default yields back to the main
-                    // thread between chunks — so blocking that thread on the
-                    // returned Task DEADLOCKS the editor outright (it did, once:
-                    // Unity froze at 0.5% CPU with a 0-byte GLB on disk).
-                    // The uninterrupted agent never yields, so the Task is
-                    // already complete when it is returned and the wait below is
-                    // free rather than fatal.
-                    // NOTE: the agent lives in the CORE glTFast assembly, not in
-                    // glTFast.Export where GameObjectExport is. Looking it up via
-                    // exportType.Assembly returns null, which silently restores
-                    // the deadlock — so search all loaded assemblies instead.
-                    if (DeferAgentType == null)
-                        throw new System.Exception(
-                            "UninterruptedDeferAgent not found — refusing to export, because "
-                            + "a null defer agent deadlocks the editor rather than failing.");
-                    object deferAgent = System.Activator.CreateInstance(DeferAgentType);
-                    var export = System.Activator.CreateInstance(
-                        exportType, new object[] { settings, null, null, deferAgent, null });
-
-                    var addScene = exportType.GetMethods()
-                        .First(m => m.Name == "AddScene"
-                                 && m.GetParameters()[0].ParameterType == typeof(GameObject[]));
-                    addScene.Invoke(export, new object[] { new[] { temp }, prefab.name });
-
-                    // Takes (path, CancellationToken) — reflection will not fill
-                    // the optional token for us.
-                    var save = exportType.GetMethod("SaveToFileAndDispose");
-                    var saveArgs = new object[save.GetParameters().Length];
-                    saveArgs[0] = outFile;
-                    for (int i = 1; i < saveArgs.Length; i++)
-                        saveArgs[i] = save.GetParameters()[i].ParameterType.IsValueType
-                            ? System.Activator.CreateInstance(save.GetParameters()[i].ParameterType)
-                            : null;
-                    var task = save.Invoke(export, saveArgs) as System.Threading.Tasks.Task<bool>;
-                    bool ok = task != null && task.GetAwaiter().GetResult();
-                    if (ok && System.IO.File.Exists(outFile)) written++;
-                    else failed.Add(path + " (glTFast reported failure)");
-                }
-                catch (System.Exception ex) { failed.Add(path + " (" + ex.GetBaseException().Message + ")"); }
-                finally { if (temp != null) Object.DestroyImmediate(temp); }
-            }
-            return (written, failed);
-#pragma warning restore 162
-        }
-
-        /// <summary>Found across ALL loaded assemblies — it is not in glTFast.Export.</summary>
-        private static System.Type DeferAgentType =>
-            System.AppDomain.CurrentDomain.GetAssemblies()
-                .Select(a => { try { return a.GetType("GLTFast.UninterruptedDeferAgent"); } catch { return null; } })
-                .FirstOrDefault(t => t != null);
-
-        private static System.Type SettingsType(System.Type exportType) =>
-            exportType.Assembly.GetType("GLTFast.Export.ExportSettings");
+        //
+        // GLB export lives in HoloCityGlbExporter, driven from Export() above.
+        //
+        // The synchronous implementation that used to sit here was removed. It
+        // blocked the main thread on glTFast's Task via GetAwaiter().GetResult(),
+        // and that Task needs the main thread to progress — it deadlocked the
+        // editor twice on 2026-08-02, force-quit both times. It had been left
+        // in place behind an early `return` with a DISABLED banner, which by
+        // now was worse than gone: the banner claimed GLB export was off long
+        // after the async rewrite landed and started working.
+        //
+        // One GLB per DISTINCT PREFAB, exported at IDENTITY. A town with 40
+        // copies of a wall ships one wall mesh and 40 transforms; the manifest
+        // carries each instance's world transform and the palette carries the
+        // prefab's own default rotation, so baking either into the GLB would
+        // apply it twice.
 
         private static List<string> PalettePrefabPaths()
         {

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "holocity.glb-manifest.1-0-0",
+  "title": "HoloCity GLB Manifest",
+  "description": "Written by Unity to glb/manifest.json inside a bundle. Maps each exported prefab to its GLB and a content hash, so a re-export skips prefabs whose content has not changed. Re-exporting every GLB on every run costs minutes of editor time for a whole town, and a pipeline that costs minutes per iteration stops being used. DELETE THIS FILE TO FORCE A FULL REBUILD.",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "exporterVersion", "entries"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "kind": { "const": "holocity.glb-manifest" },
+    "exporterVersion": {
+      "type": "string",
+      "description": "Identity of the GLB writer itself, mixed into every hash. A manifest whose exporterVersion differs from the running exporter describes GLBs this build would not produce, and is ignored wholesale rather than trusted entry-by-entry."
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["prefabPath", "glb", "hash"],
+        "properties": {
+          "prefabPath": { "type": "string", "description": "Assets/... path of the source prefab." },
+          "glb": { "type": "string", "description": "GLB filename, relative to the glb/ directory." },
+          "hash": {
+            "type": "string",
+            "description": "exporterVersion + AssetDatabase.GetAssetDependencyHash(prefabPath). The dependency hash already covers the asset, its importer settings, and its dependency graph, so a retextured material or a reimported FBX invalidates it without anyone enumerating what to watch. An entry is recorded ONLY after a verified non-empty write — caching a failure as done is how a bundle ends up permanently missing a mesh while every later export reports success."
+          }
+        }
+      }
+    }
+  }
+}
